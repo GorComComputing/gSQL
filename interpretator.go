@@ -8,6 +8,12 @@ import (
 // Command list for interpretator
 var cmd =  map[string]func([]string)string{
 	"select": cmd_select,
+	"update": cmd_update,
+	"create": create_table,
+	"insert": cmd_insert,
+	"delete": cmd_delete,
+	".save": cmd_save,
+	".load": cmd_load,
 }
 
 

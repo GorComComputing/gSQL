@@ -15,6 +15,8 @@ var exit_status bool = true	// false = exit
 func main() {
 	var cmd_line string
 	var words = make([]string, len(os.Args)-1)
+	
+	init_db()
 
 	// pars command line args
 	if len(os.Args) > 1 {

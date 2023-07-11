@@ -5,7 +5,8 @@ main: *.go deps
 
 .PHONY:deps
 deps:
-#	go get github.com/gorilla/sessions
+	#go get github.com/stretchr/testify/assert
+	#go get github.com/marianogappa/sqlparser
 
 
 
