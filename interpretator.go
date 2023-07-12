@@ -12,10 +12,10 @@ var cmd =  map[string]func([]string)string{
 	"create": create_table,
 	"insert": cmd_insert,
 	"delete": cmd_delete,
+	
 	".save": cmd_save,
 	".load": cmd_load,
 }
-
 
 
 // Interpretator 
