@@ -132,11 +132,7 @@ var users_table []UserFromDB
 
 
 
-const (
-	TYPE_ERROR = 0
-	TYPE_BYTES = 1
-	TYPE_INT64 = 2
-)
+
 
 
 
@@ -158,7 +154,7 @@ type Query struct {
 // SELECT * FROM table_name;
 // SELECT column1, column2, ...
 // FROM table_name;
-func cmd_select(words []string) string {
+/*func cmd_select(words []string) string {
 	var output string
 	var query Query
 	var i int = 1
@@ -178,7 +174,7 @@ func cmd_select(words []string) string {
 	cmd_load(words)
 	output = exec(query)
 	return output 
-}
+}*/
 
 
 // INSERT INTO table_name (column1, column2, column3, ...)
@@ -559,6 +555,24 @@ func buildData(filename string, data []UserFromDB) error {
 }
 
 ////////////////////////////////////////////////////////////////////
+
+const (
+	TYPE_ERROR = 0
+	TYPE_BYTES = 1
+	TYPE_INT64 = 2
+)
+
+// table definition
+type TableDef struct {
+	// user defined
+	Name string
+	Types []uint32 // column types
+	Cols []string // column names
+	PKeys int // the first `PKeys` columns are the primary key
+	// auto-assigned B-tree key prefixes for different tables
+	Prefix uint32
+}
+
 // table cell
 type Value struct {
 	Type uint32
@@ -684,16 +698,14 @@ func pCreateTable(p *Parser) *QLCreateTable {
 
 func pSelect(p *Parser) *QLSelect {
 	stmt := QLSelect{}
-	
-	fmt.Printf("select\n")
-	
+		
 	// SELECT xxx
 	pSelectExprList(p, &stmt)
 	// FROM table
 	if !pKeyword(p, "from") {
-		pErr(p, nil, "expect `FROM` table")
+		pErr(p, nil, "expect `FROM` table " + strconv.Itoa(p.idx) )
 	}
-//	stmt.Table = pMustSym(p)
+	stmt.Table = pMustSym(p)
 	
 	// INDEX BY xxx FILTER yyy LIMIT zzz
 //	pScan(p, &stmt.QLScan)
@@ -702,6 +714,18 @@ func pSelect(p *Parser) *QLSelect {
 		return nil
 	}
 	return &stmt
+}
+
+func pMustSym(p *Parser) string {
+	var input []byte
+	
+	//fmt.Println("Must ", string(p.input), strconv.Itoa(p.idx))
+	
+	skipSpace(p)
+	for ; p.input[p.idx] != byte(' ') && p.input[p.idx] != byte(',') && p.input[p.idx] != byte(';'); p.idx++ {
+		input = append(input, byte(p.input[p.idx]))
+	}
+	return string(input)
 }
 
 func pSelectExprList(p *Parser, node *QLSelect) {
@@ -713,7 +737,9 @@ func pSelectExprList(p *Parser, node *QLSelect) {
 
 func pSelectExpr(p *Parser, node *QLSelect) {
 	expr := QLNode{}
-	pExprOr(p, &expr)
+//	pExprOr(p, &expr)
+	expr.Str = []byte(pMustSym(p)) ////////
+	expr.Type = QL_STR ////
 	name := ""
 	if pKeyword(p, "as") {
 		name = pMustSym(p)
@@ -830,10 +856,6 @@ func pStr(p *Parser, node *QLNode) bool {
 	return true
 }
 
-func pMustSym(p *Parser) string {
-	return "str"
-}
-
 
 var pKeywordSet = map[string]bool{
 	"from": true,
@@ -910,22 +932,72 @@ func pErr(p *Parser, node *QLNode, errStr string) {
 }
 
 ///////////////////////////////////////////////////////////////////
-func cmd_test(words []string) string {
+func cmd_select(words []string) string {
 	var output string
 
 	var p Parser
-	p.input = []byte(words[1] + " " + words[2])
 	
-	pStmt(&p)
+	//copy(words[0:], words[1:])
+	p.input = []byte(words[0])
+	
+	for i := 1; i < len(words); i++  {
+		p.input = append(p.input, []byte(" ")...)
+		p.input = append(p.input, []byte(words[i])...)
+	}
+	
+	outStmt := pStmt(&p)
 	if p.err != nil {
     		fmt.Println(p.err)
-  	}
+  	} 
 	
-	/*if pKeyword(&p, "select", "from") {
-		output = "yes\n"
-	} else {
-		output = "no\n"
-	}*/
+	//fmt.Println(outStmt)
+	
+	var t *QLSelect = outStmt.(*QLSelect)
+	output = qlSelect(t)
+	
 	return output
+}
+
+
+func qlSelect(req *QLSelect) string {
+	var output string
+	var query Query
+
+	if req.Output[0].Str[0] == '*' {
+		query.Fields = append(query.Fields, "Id")
+		query.Fields = append(query.Fields, "UserName")
+		query.Fields = append(query.Fields, "Login")
+		query.Fields = append(query.Fields, "Pswd")
+		query.Fields = append(query.Fields, "UserRole")
+	} else {
+		for _, val := range req.Output {
+			query.Fields = append(query.Fields, string(val.Str))
+		}
+		/*query.Fields[0] = "Id"
+		query.Fields = append(query.Fields, "UserName")
+		query.Fields = append(query.Fields, "Login")
+		query.Fields = append(query.Fields, "Pswd")
+		query.Fields = append(query.Fields, "UserRole")*/
+	}
+		for i := 0; i < len(users_table); i++{
+		for _, val := range query.Fields{
+			switch val {
+			case "Id":
+			output += strconv.Itoa(users_table[i].Id) + " "
+			case "UserName":
+			output += string(users_table[i].UserName) + " "
+			case "Login":
+    			output += string(users_table[i].Login) + " "
+    			case "Pswd":
+    			output += string(users_table[i].Pswd) + " " 
+    			case "UserRole":
+    			output += strconv.Itoa(users_table[i].UserRole) + " " 
+    			default:
+			fmt.Println("Don't find column ", val)
+			}
+		}
+		if len(output) > 0 {output += "\n"}
+		}
+		return output
 }
 
