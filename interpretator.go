@@ -15,6 +15,8 @@ var cmd =  map[string]func([]string)string{
 	
 	".save": cmd_save,
 	".load": cmd_load,
+	
+	"test": cmd_test,
 }
 
 

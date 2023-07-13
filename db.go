@@ -9,6 +9,9 @@ import (
     "encoding/binary"
     //"github.com/stretchr/testify/assert"
     //"github.com/marianogappa/sqlparser"
+    
+    "unicode"
+    "errors"
 )
 
 
@@ -135,37 +138,11 @@ const (
 	TYPE_INT64 = 2
 )
 
-// table cell
-type Value struct {
-	Type uint32
-	I64 int64
-	Str []byte
-}
 
-// syntax tree
-type QLNode struct {
-	Value // Type, I64, Str
-	Kids []QLNode
-}
 
-// syntax tree node types
-const (
-	QL_UNINIT = 0
-// scalar
-	QL_STR = TYPE_BYTES
-	QL_I64 = TYPE_INT64
-// binary ops
-	QL_CMP_GE = 10 // >=
-	QL_CMP_GT = 11 // >
-// more operators; omitted...
-// unary ops
-	QL_NOT = 50
-	QL_NEG = 51
-// others
-	QL_SYM = 100 // column
-	QL_TUP = 101 // tuple
-	QL_ERR = 200 // error; from parsing or evaluation
-)
+
+
+/////////////////////////////////////////////////////////////////////////////
 
 
 type Query struct {
@@ -579,5 +556,376 @@ func buildData(filename string, data []UserFromDB) error {
                 }
         }*/
         return nil
+}
+
+////////////////////////////////////////////////////////////////////
+// table cell
+type Value struct {
+	Type uint32
+	I64 int64
+	Str []byte
+}
+
+// modes of the updates
+const (
+	MODE_UPSERT = 0 // insert or replace
+	MODE_UPDATE_ONLY = 1 // update existing keys
+	MODE_INSERT_ONLY = 2 // only add new keys
+)
+
+type Parser struct {
+	input []byte
+	idx int
+	err error
+}
+
+// syntax tree
+type QLNode struct {
+	Value // Type, I64, Str
+	Kids []QLNode
+}
+
+// syntax tree node types
+const (
+	QL_UNINIT = 0
+	// scalar
+	QL_STR = TYPE_BYTES
+	QL_I64 = TYPE_INT64
+	// binary ops
+	QL_CMP_GE = 10 // >=
+	QL_CMP_GT = 11 // >
+	// more operators; omitted...
+	// unary ops
+	QL_NOT = 50
+	QL_NEG = 51
+	// others
+	QL_SYM = 100 // column
+	QL_TUP = 101 // tuple
+	QL_ERR = 200 // error; from parsing or evaluation
+	
+	QL_OR
+	QL_AND
+	QL_MUL
+	QL_DIV
+	QL_MOD
+)
+
+// common structure for queries: `INDEX BY`, `FILTER`, `LIMIT`
+type QLScan struct {
+	Table string
+	// INDEX BY xxx
+	Key1 QLNode // comparison, optional
+	Key2 QLNode // comparison, optional
+	// FILTER xxx
+	Filter QLNode // boolean, optional
+	// LIMIT x, y
+	Offset int64
+	Limit int64
+}
+
+// stmt: select
+type QLSelect struct {
+	QLScan
+	Names []string 	// expr AS name
+	Output []QLNode // expression list
+}
+
+// stmt: update
+type QLUpdate struct {
+	QLScan
+	Names []string
+	Values []QLNode
+}
+// stmt: insert
+type QLInsert struct {
+	Table string
+	Mode int
+	Names []string
+	Values [][]QLNode
+}
+// stmt: delete
+type QLDelete struct {
+	QLScan
+}
+// stmt: create table
+type QLCreateTable struct {
+	Def TableDef
+}
+
+
+func pStmt(p *Parser) interface{} {
+	switch {
+	case pKeyword(p, "create", "table"):
+		return pCreateTable(p)
+	case pKeyword(p, "select"):
+		return pSelect(p)
+	case pKeyword(p, "insert", "into"):
+		return pInsert(p, MODE_INSERT_ONLY)
+	case pKeyword(p, "replace", "into"):
+		return pInsert(p, MODE_UPDATE_ONLY)
+	case pKeyword(p, "upsert", "into"):
+		return pInsert(p, MODE_UPSERT)
+	case pKeyword(p, "delete", "from"):
+		return pDelete(p)
+	case pKeyword(p, "update"):
+		return pUpdate(p)
+	default:
+		pErr(p, nil, "unknown stmt")
+		return nil
+	}
+}
+
+
+func pCreateTable(p *Parser) *QLCreateTable {
+	stmt := QLCreateTable{}
+	fmt.Printf("Create Table\n")
+	return &stmt
+}
+
+func pSelect(p *Parser) *QLSelect {
+	stmt := QLSelect{}
+	
+	fmt.Printf("select\n")
+	
+	// SELECT xxx
+	pSelectExprList(p, &stmt)
+	// FROM table
+	if !pKeyword(p, "from") {
+		pErr(p, nil, "expect `FROM` table")
+	}
+//	stmt.Table = pMustSym(p)
+	
+	// INDEX BY xxx FILTER yyy LIMIT zzz
+//	pScan(p, &stmt.QLScan)
+	
+	if p.err != nil {
+		return nil
+	}
+	return &stmt
+}
+
+func pSelectExprList(p *Parser, node *QLSelect) {
+	pSelectExpr(p, node)
+	for pKeyword(p, ",") {
+		pSelectExpr(p, node)
+	}
+}
+
+func pSelectExpr(p *Parser, node *QLSelect) {
+	expr := QLNode{}
+	pExprOr(p, &expr)
+	name := ""
+	if pKeyword(p, "as") {
+		name = pMustSym(p)
+	}
+	node.Names = append(node.Names, name)
+	node.Output = append(node.Output, expr)
+}
+
+func pExprOr(p *Parser, node *QLNode) {
+	pExprBinop(p, node, []string{"or"}, []uint32{QL_OR}, pExprAnd)
+}
+
+func pExprAnd(p *Parser, node *QLNode) {
+	pExprBinop(p, node, []string{"and"}, []uint32{QL_AND}, pExprNot)
+}
+func pExprNot(p *Parser, node *QLNode){ // NOT a
+}
+func pExprCmp(p *Parser, node *QLNode){ // a < b, ...
+}
+func pExprAdd(p *Parser, node *QLNode){ // a + b, a - b
+}
+
+func pExprMul(p *Parser, node *QLNode) {
+	pExprBinop(p, node, []string{"*", "/", "%"}, []uint32{QL_MUL, QL_DIV, QL_MOD}, pExprUnop)
+}
+
+func pExprUnop(p *Parser, node *QLNode) {
+	switch {
+	case pKeyword(p, "-"):
+		node.Type = QL_NEG
+		node.Kids = []QLNode{{}}
+		pExprAtom(p, &node.Kids[0])
+	default:
+		pExprAtom(p, node)
+	}
+}
+
+func pExprBinop(p *Parser, node *QLNode,ops []string, types []uint32, next func(*Parser, *QLNode)) {
+//	assert(len(ops) == len(types))
+	left := QLNode{}
+	next(p, &left)
+	for more := true; more; {
+		more = false
+		for i := range ops {
+			if pKeyword(p, ops[i]) {
+				new := QLNode{Value: Value{Type: types[i]}}
+				new.Kids = []QLNode{left, {}}
+				next(p, &new.Kids[1])
+				left = new
+				more = true
+				break
+			}
+		}
+	}
+	*node = left
+}
+
+func pExprAtom(p *Parser, node *QLNode) {
+	switch {
+	case pKeyword(p, "("):
+		pExprTuple(p, node)
+		if !pKeyword(p, ")") {
+			pErr(p, node, "unclosed parenthesis")
+		}
+	case pSym(p, node):
+	case pNum(p, node):
+	case pStr(p, node):
+	default:
+		pErr(p, node, "expect symbol, number or string")
+	}
+}
+
+
+func pExprTuple(p *Parser, node *QLNode) {
+	kids := []QLNode{{}}
+	pExprOr(p, &kids[len(kids)-1])
+	for pKeyword(p, ",") {
+		kids = append(kids, QLNode{})
+		pExprOr(p, &kids[len(kids)-1])
+	}
+	if len(kids) > 1 {
+		node.Type = QL_TUP
+		node.Kids = kids
+	} else {
+		*node = kids[0] // not a tuple
+	}
+}
+
+func pSym(p *Parser, node *QLNode) bool {
+	skipSpace(p)
+	end := p.idx
+	if !(end < len(p.input) && isSymStart(p.input[end])) {
+		return false
+	}
+	end++
+	for end < len(p.input) && isSym(p.input[end]) {
+		end++
+	}
+	if pKeywordSet[strings.ToLower(string(p.input[p.idx:end]))] {
+		return false // not allowed
+	}
+	node.Type = QL_SYM
+	node.Str = p.input[p.idx:end]
+	p.idx = end
+	return true
+}
+
+
+func pNum(p *Parser, node *QLNode) bool {
+	return true
+}
+
+func pStr(p *Parser, node *QLNode) bool {
+	return true
+}
+
+func pMustSym(p *Parser) string {
+	return "str"
+}
+
+
+var pKeywordSet = map[string]bool{
+	"from": true,
+	"index": true,
+	"filter": true,
+	"limit": true,
+}
+
+
+func isSymStart(ch byte) bool {
+	return unicode.IsLetter(rune(ch)) || ch == '_' || ch == '@'
+}
+
+
+func pInsert(p *Parser, mode int32) *QLInsert {
+	stmt := QLInsert{}
+	fmt.Printf("insert\n", string(mode))
+	return &stmt
+}
+
+func pDelete(p *Parser) *QLDelete {
+	stmt := QLDelete{}
+	fmt.Printf("delete\n")
+	return &stmt
+}
+
+func pUpdate(p *Parser) *QLUpdate {
+	stmt := QLUpdate{}
+	fmt.Printf("update\n")
+	return &stmt
+}
+
+
+// match multiple keywords sequentially
+func pKeyword(p *Parser, kwds ...string) bool {
+	save := p.idx
+	for _, kw := range kwds {
+		skipSpace(p)
+		end := p.idx + len(kw)
+		if end > len(p.input) {
+			p.idx = save
+			return false
+		}
+		// case insensitive matach
+		ok := strings.EqualFold(string(p.input[p.idx:end]), kw)
+		// token is terminated
+		if ok && isSym(kw[len(kw)-1]) && end < len(p.input) {
+			ok = !isSym(p.input[end])
+		}
+		if !ok {
+			p.idx = save
+			return false
+		}
+		p.idx += len(kw)
+	}
+	return true
+}
+
+
+func isSym(ch byte) bool {
+	r := rune(ch)
+	return unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_'
+}
+
+
+func skipSpace(p *Parser) {
+	if p.input[p.idx] == ' ' {
+		p.idx++
+	}
+}
+
+func pErr(p *Parser, node *QLNode, errStr string) {
+	p.err = errors.New(errStr)
+}
+
+///////////////////////////////////////////////////////////////////
+func cmd_test(words []string) string {
+	var output string
+
+	var p Parser
+	p.input = []byte(words[1] + " " + words[2])
+	
+	pStmt(&p)
+	if p.err != nil {
+    		fmt.Println(p.err)
+  	}
+	
+	/*if pKeyword(&p, "select", "from") {
+		output = "yes\n"
+	} else {
+		output = "no\n"
+	}*/
+	return output
 }
 
