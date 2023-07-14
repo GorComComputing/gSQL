@@ -470,7 +470,7 @@ func init_db() {
 func create_table(words []string) string {
 	var output string
 	
-	output = "Table created"
+	output = "Table created\n"
 	/*query, err := sqlparser.Parse("SELECT a, b, c FROM 'd' WHERE e = '1' AND f > '2'")
 	if err != nil {
 		//log.Fatal(err)

@@ -2,6 +2,7 @@ package main
 
 import (
     //"fmt"
+    "os"
 )
 
 
@@ -41,7 +42,8 @@ func cmd_help(words []string) string {
 
 // Exit from this program
 func cmd_quit(words []string) string {
-	exit_status = false
+	os.Exit(0)
+	//exit_status = false
 	return ""
 }
 

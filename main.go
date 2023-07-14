@@ -9,7 +9,7 @@ import (
 )
 
 
-var exit_status bool = true	// false = exit
+//var exit_status bool = true	// false = exit
 
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
                 }
 
         	copy(words[0:], os.Args[1:])
-                exit_status = false
+                //exit_status = false
                 
         	out := interpretator(words)
 		if len(out) > 0 {
@@ -43,7 +43,7 @@ func main() {
 	go http.ListenAndServe(":8086", nil)
 
 	// start shell
-	for exit_status {
+	for  {  // exit_status
 		fmt.Print("gSQL> ")
 		// ввод строки с пробелами
     		scanner := bufio.NewScanner(os.Stdin)
