@@ -6,7 +6,7 @@ import (
 
 
 // Command list for interpretator
-var cmd =  map[string]func([]string)string{
+var cmd = map[string]func([]string)string{
 	"select": cmd_select,
 	"update": cmd_update,
 	"create": create_table,
@@ -15,8 +15,8 @@ var cmd =  map[string]func([]string)string{
 	
 	".save": cmd_save,
 	".load": cmd_load,
-	
-	//"test": cmd_test,
+	".quit": cmd_quit,
+	".help": cmd_help,
 }
 
 
@@ -27,6 +27,22 @@ func interpretator(words []string) string {
 	} else{
 		return "Unknown command: " + words[0] + "\n"
 	}
+}
+
+// Print command list
+var cmd_print = make(map[string]func([]string)string)
+func cmd_help(words []string) string {
+	var output string
+	for key, _ := range cmd_print {
+		output += key + "\n"
+	}
+	return output
+}
+
+// Exit from this program
+func cmd_quit(words []string) string {
+	exit_status = false
+	return ""
 }
 
 

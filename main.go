@@ -60,7 +60,4 @@ func main() {
 }
 
 
-func cmd_quit(words []string) string {
-	exit_status = false
-	return ""
-}
+
