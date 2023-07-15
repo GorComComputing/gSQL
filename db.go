@@ -7,11 +7,11 @@ import (
     "os"
     "bufio"
     "encoding/binary"
-    //"github.com/stretchr/testify/assert"
-    //"github.com/marianogappa/sqlparser"
     
     "unicode"
     "errors"
+    
+    //"reflect"
 )
 
 
@@ -120,6 +120,18 @@ func (node BNode) nbytes() uint16 {
 
 
 
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+
 type UserFromDB struct {
     Id int
     UserName string
@@ -131,14 +143,6 @@ type UserFromDB struct {
 var users_table []UserFromDB
 
 
-
-
-
-
-
-
-
-/////////////////////////////////////////////////////////////////////////////
 
 
 type Query struct {
@@ -154,27 +158,7 @@ type Query struct {
 // SELECT * FROM table_name;
 // SELECT column1, column2, ...
 // FROM table_name;
-/*func cmd_select(words []string) string {
-	var output string
-	var query Query
-	var i int = 1
-	//fmt.Println(words)
-	query.Type = "select"
-	
-	
-	for ; words[i] != "from"; i++ {
-		query.Fields = append(query.Fields, words[i])
-	}
-	
-	if words[i] == "from" {
-		query.TableName = words[i+1]
-	}
-	
 
-	cmd_load(words)
-	output = exec(query)
-	return output 
-}*/
 
 
 // INSERT INTO table_name (column1, column2, column3, ...)
@@ -182,212 +166,9 @@ type Query struct {
 //
 // INSERT INTO table_name
 // VALUES (value1, value2, value3, ...);
-/*func cmd_insert(words []string) string {
-	var output string
-	var query Query
-	var i int = 1
 
-	query.Type = "insert"
-	
-	if words[i] == "into" {i++}
-	query.TableName = words[i]
-	i++
-	
-	//fmt.Println(words)
-	
-	if words[i] == "values" {
-		i++
-		for ; i < len(words); i++ {
-			query.Values = append(query.Values, words[i])
-		}	
-	}
-	cmd_load(words)
-	output = exec(query)	
-	cmd_save(words)
-	return output 
-}*/
 
-/*
-func exec(query Query) string {
-	var output string
-	
-	switch query.Type {
-	case "select":
-		if query.Fields[0] == "*" {
-			query.Fields[0] = "Id"
-			query.Fields = append(query.Fields, "UserName")
-			query.Fields = append(query.Fields, "Login")
-			query.Fields = append(query.Fields, "Pswd")
-			query.Fields = append(query.Fields, "UserRole")
-		} 
-		for i := 0; i < len(users_table); i++{
-		for _, val := range query.Fields{
-			switch val {
-			case "Id":
-			output += strconv.Itoa(users_table[i].Id) + " "
-			case "UserName":
-			output += string(users_table[i].UserName) + " "
-			case "Login":
-    			output += string(users_table[i].Login) + " "
-    			case "Pswd":
-    			output += string(users_table[i].Pswd) + " " 
-    			case "UserRole":
-    			output += strconv.Itoa(users_table[i].UserRole) + " " 
-    			default:
-			fmt.Println("Don't find column ", val)
-			}
-		}
-		if len(output) > 0 {output += "\n"}
-		}
-		
-		//if len(output) > 0 {output += "\n"}
-		//fmt.Println(output)
-	case "insert":
-		//fmt.Println("insert")
-		users_table = append(users_table, UserFromDB{Id: 0, UserName: "", Login: "", Pswd: "", UserRole: 0})
-		users_table[len(users_table)-1].Id, _ = strconv.Atoi(query.Values[0])
-    		users_table[len(users_table)-1].UserName = query.Values[1]
-    		users_table[len(users_table)-1].Login = query.Values[2]
-    		users_table[len(users_table)-1].Pswd = query.Values[3]
-    		users_table[len(users_table)-1].UserRole, _ = strconv.Atoi(query.Values[4])
-    		output = "Inserted: OK" + "\n"
-    		//fmt.Println(users_table)
-    		//fmt.Println(users_table)
-    	case "delete":
-    			var Id_num int = -1
-    			var UserName_num int = -1
-    			var Login_num int = -1
-    			var Pswd_num int = -1
-    			var UserRole_num int = -1
-    		for i, val := range query.Fields {
-    			switch val {
-    			case "Id": Id_num = i
-    			case "UserName": UserName_num = i
-    			case "Login": Login_num = i
-    			case "Pswd": Pswd_num = i
-    			case "UserRole": UserRole_num = i
-    			} 
-    		}
-    		
-    		var counters []int
-		for i := range users_table {		
-			var Id int
-			var UserRole int
-			
-			if Id_num >= 0 {Id, _ = strconv.Atoi(query.Values[Id_num])}
-    			if Id_num >= 0 && users_table[i].Id == Id {
-    				counters = append(counters, i)
-        			continue
-    			}
-    			if UserName_num >= 0 && users_table[i].UserName == query.Values[UserName_num] {
-        			counters = append(counters, i)
-        			continue
-    			}
-    			if Login_num >= 0 && users_table[i].Login == query.Values[Login_num] {
-        			counters = append(counters, i)
-        			continue
-    			}
-    			if Pswd_num >= 0 && users_table[i].Pswd == query.Values[Pswd_num] {
-        			counters = append(counters, i)
-        			continue
-    			}
-    			if UserRole_num >= 0 {UserRole, _ = strconv.Atoi(query.Values[UserRole_num])}
-    			if UserRole_num >= 0 && users_table[i].UserRole == UserRole {
-        			counters = append(counters, i)
-        			continue
-    			}
-		}
-		
-		
-		for j := len(counters)-1; j >= 0; j-- {
-			i := counters[j]
-			output += "Deleted OK: " + users_table[i].UserName + "\n"
-			users_table = append(users_table[:i], users_table[i+1:]...)
-        	}
-        case "update":
-        		var Id_num int = -1
-    			var UserName_num int = -1
-    			var Login_num int = -1
-    			var Pswd_num int = -1
-    			var UserRole_num int = -1
-    		for i, val := range query.Fields {
-    			switch val {
-    			case "Id": Id_num = i
-    			case "UserName": UserName_num = i
-    			case "Login": Login_num = i
-    			case "Pswd": Pswd_num = i
-    			case "UserRole": UserRole_num = i
-    			} 
-    		}
-    		
-    		var Id_num_set int = -1
-    			var UserName_num_set int = -1
-    			var Login_num_set int = -1
-    			var Pswd_num_set int = -1
-    			var UserRole_num_set int = -1
-    		for i, val := range query.Set_Fields {
-    			switch val {
-    			case "Id": Id_num_set = i
-    			case "UserName": UserName_num_set = i
-    			case "Login": Login_num_set = i
-    			case "Pswd": Pswd_num_set = i
-    			case "UserRole": UserRole_num_set = i
-    			} 
-    		}
-    		
-    		//var counters []int
-		for i := range users_table {		
-			var Id int
-			var UserRole int
-			
-			if Id_num >= 0 {Id, _ = strconv.Atoi(query.Values[Id_num])}
-    			if Id_num >= 0 && users_table[i].Id != Id {
-        			continue
-    			}
-    			if UserName_num >= 0 && users_table[i].UserName != query.Values[UserName_num] {
-        			continue
-    			}
-    			if Login_num >= 0 && users_table[i].Login != query.Values[Login_num] {
-        			continue
-    			}
-    			if Pswd_num >= 0 && users_table[i].Pswd != query.Values[Pswd_num] {
-        			continue
-    			}
-    			if UserRole_num >= 0 {UserRole, _ = strconv.Atoi(query.Values[UserRole_num])}
-    			if UserRole_num >= 0 && users_table[i].UserRole != UserRole {
-        			continue
-    			}
-    			
-    			if Id_num_set >= 0 {users_table[i].Id, _ = strconv.Atoi(query.Set_Values[Id_num_set])}
-    			if UserName_num_set >= 0 {users_table[i].UserName = query.Set_Values[UserName_num_set]}
-    			if Login_num_set >= 0 {users_table[i].Login = query.Set_Values[Login_num_set]}
-    			if Pswd_num_set >= 0 {users_table[i].Pswd = query.Set_Values[Pswd_num_set]}
-    			if UserRole_num_set >= 0 {users_table[i].UserRole, _ = strconv.Atoi(query.Set_Values[UserRole_num_set])}
-    			
-    			output += "Updated OK: " + users_table[i].UserName + "\n"
-    			//counters = append(counters, i)
-		}
-		
-*/		
-		/*for j := len(counters)-1; j >= 0; j-- {
-			i := counters[j]
-			output += "Updated OK: " + users_table[i].UserName + "\n"
-			
-			
-			
-			
-			
-			
-			//users_table = append(users_table[:i], users_table[i+1:]...)
-        	}*/
-/*	default:
-		fmt.Println("Unrecognized type")
-		return output
-	}
 
-	return  output
-}
-*/
 
 func init_db() {
 	var words []string
@@ -406,65 +187,11 @@ func init_db() {
 // UPDATE table_name
 // SET column1 = value1, column2 = value2, ...
 // WHERE condition;
-/*func cmd_update(words []string) string {
-	var output string
-	var query Query
-	var i int = 1
-	
-	query.Type = "update"
-	query.TableName = words[i]
-	i++
-	
-	if words[i] == "set" {
-		i++
-		for ; i < len(words); i++ {
-			if words[i] == "where" {break}
-			
-			query.Set_Fields = append(query.Set_Fields, strings.SplitAfter(words[i], "=")[0][:len(strings.SplitAfter(words[i], "=")[0])-1])
-			query.Set_Values = append(query.Set_Values, strings.SplitAfter(words[i], "=")[1])
-		}
-	}
-	
-		i++
-		for ; i < len(words); i++ {
-			query.Fields = append(query.Fields, strings.SplitAfter(words[i], "=")[0][:len(strings.SplitAfter(words[i], "=")[0])-1])
-			query.Values = append(query.Values, strings.SplitAfter(words[i], "=")[1])
-		}
 
-	cmd_load(words)
-	output = exec(query)	
-	cmd_save(words)
-	return output 
-}*/
 
 
 // DELETE FROM table_name WHERE condition;
-/*func cmd_delete(words []string) string {
-	var output string
-	var query Query
-	var i int = 1
-	
-	//fmt.Println(words)
-	query.Type = "delete"
-	
-	if words[i] == "from" {
-		query.TableName = words[i+1]
-		i += 2
-	}
-	
-	if words[i] == "where" {
-		i++
-		for ; i < len(words); i++ {
-			query.Fields = append(query.Fields, strings.SplitAfter(words[i], "=")[0][:len(strings.SplitAfter(words[i], "=")[0])-1])
-			query.Values = append(query.Values, strings.SplitAfter(words[i], "=")[1])
-		}
-	}
 
-	cmd_load(words)
-	output = exec(query)	
-	cmd_save(words)
-	return output 
-}*/
 
 
 func create_table(words []string) string {
@@ -581,7 +308,7 @@ type TableDef struct {
 // table cell
 type Value struct {
 	Type uint32
-	I64 int64
+	I64 int
 	Str []byte
 }
 
@@ -613,6 +340,9 @@ const (
 	// binary ops
 	QL_CMP_GE = 10 // >=
 	QL_CMP_GT = 11 // >
+	QL_CMP_LT = 12 // < 
+	QL_CMP_EQ = 13 // = 
+	QL_CMP_LE = 14 // <= 
 	// more operators; omitted...
 	// unary ops
 	QL_NOT = 50
@@ -622,11 +352,15 @@ const (
 	QL_TUP = 101 // tuple
 	QL_ERR = 200 // error; from parsing or evaluation
 	
-	QL_OR
-	QL_AND
-	QL_MUL
-	QL_DIV
-	QL_MOD
+	QL_OR =  221
+	QL_AND = 222
+	
+	QL_MUL = 201
+	QL_DIV = 202
+	QL_MOD = 203
+	
+	QL_ADD = 210
+	QL_SUB = 211
 )
 
 // common structure for queries: `INDEX BY`, `FILTER`, `LIMIT`
@@ -638,8 +372,8 @@ type QLScan struct {
 	// FILTER xxx
 	Filter QLNode // boolean, optional
 	// LIMIT x, y
-	Offset int64
-	Limit int64
+	Offset int
+	Limit int
 }
 
 // stmt: select
@@ -670,6 +404,18 @@ type QLDelete struct {
 // stmt: create table
 type QLCreateTable struct {
 	Def TableDef
+}
+
+// for evaluating expressions
+type QLEvalContex struct {
+	env Record // optional row values
+	out Value
+	err error
+}
+
+type Record struct {
+	Cols []string
+	Vals []Value
 }
 
 
@@ -762,10 +508,19 @@ func pExprAnd(p *Parser, node *QLNode) {
 	pExprBinop(p, node, []string{"and"}, []uint32{QL_AND}, pExprNot)
 }
 func pExprNot(p *Parser, node *QLNode){ // NOT a
+	if pKeyword(p, "not"){
+		node.Type = QL_NOT
+		node.Kids = []QLNode{{}}
+		pExprAtom(p, &node.Kids[0])
+	}
+	pExprCmp(p, node)
+	//pExprBinop(p, node, []string{"not"}, []uint32{QL_NOT}, pExprCmp)
 }
 func pExprCmp(p *Parser, node *QLNode){ // a < b, ...
+	pExprBinop(p, node, []string{"<", ">", "=", "<=", ">="}, []uint32{QL_CMP_LT, QL_CMP_GT, QL_CMP_EQ, QL_CMP_LE, QL_CMP_GE}, pExprAdd)
 }
 func pExprAdd(p *Parser, node *QLNode){ // a + b, a - b
+	pExprBinop(p, node, []string{"+", "-"}, []uint32{QL_ADD, QL_SUB, QL_MOD}, pExprMul)
 }
 
 func pExprMul(p *Parser, node *QLNode) {
@@ -805,14 +560,14 @@ func pExprBinop(p *Parser, node *QLNode,ops []string, types []uint32, next func(
 
 func pExprAtom(p *Parser, node *QLNode) {
 	switch {
-	case pKeyword(p, "("):
+	/*case pKeyword(p, "("):
 		pExprTuple(p, node)
 		if !pKeyword(p, ")") {
 			pErr(p, node, "unclosed parenthesis")
-		}
+		}*/
 	case pSym(p, node):
 	case pNum(p, node):
-	case pStr(p, node):
+	//case pStr(p, node):
 	default:
 		pErr(p, node, "expect symbol, number or string")
 	}
@@ -821,10 +576,10 @@ func pExprAtom(p *Parser, node *QLNode) {
 
 func pExprTuple(p *Parser, node *QLNode) {
 	kids := []QLNode{{}}
-	pExprOr(p, &kids[len(kids)-1])
+	pExprMul(p, &kids[len(kids)-1])////////////////
 	for pKeyword(p, ",") {
 		kids = append(kids, QLNode{})
-		pExprOr(p, &kids[len(kids)-1])
+		pExprMul(p, &kids[len(kids)-1])
 	}
 	if len(kids) > 1 {
 		node.Type = QL_TUP
@@ -855,6 +610,21 @@ func pSym(p *Parser, node *QLNode) bool {
 
 
 func pNum(p *Parser, node *QLNode) bool {
+	skipSpace(p)
+	end := p.idx
+	if !(end < len(p.input) && isNum(p.input[end])) {
+		return false
+	}
+	end++
+	for end < len(p.input) && isNum(p.input[end]) {
+		end++
+	}
+	/*if pKeywordSet[strings.ToLower(string(p.input[p.idx:end]))] {
+		return false // not allowed
+	}*/
+	node.Type = QL_I64
+	node.I64, _ = strconv.Atoi(string(p.input[p.idx:end]))
+	p.idx = end
 	return true
 }
 
@@ -893,6 +663,8 @@ func pInsert(p *Parser, mode int32) *QLInsert {
 	// SET xxx
 //	pSelectExprList(p, &stmt)
 	pInsertExprList(p, &stmt)
+	
+	//fmt.Println(stmt)
 	
 	
 	// INDEX BY xxx FILTER yyy LIMIT zzz
@@ -994,15 +766,21 @@ func pInsertExprList(p *Parser, node *QLInsert) {
 
 func pInsertExpr(p *Parser, node *QLInsert) {
 	expr := QLNode{}
-//	pExprOr(p, &expr)
+	
+	
+	//pExprUnop(p, &expr)
+	pExprOr(p, &expr)
+	//pExprMul(p, &expr)
 	//name := pMustSym(p) ////////
 	
 	//if !pKeyword(p, "=") {
 	//	pErr(p, nil, "expect `=` " + strconv.Itoa(p.idx) )
 	//}
 	
-	expr.Str = []byte(pMustSym(p)) ////////
-	expr.Type = QL_STR ////
+	//pExprTuple(p, &expr)
+	
+//	expr.Str = []byte(pMustSym(p)) ////////
+//	expr.Type = QL_STR ////
 	
 	name := ""
 	/*if pKeyword(p, "as") {
@@ -1042,6 +820,10 @@ func pKeyword(p *Parser, kwds ...string) bool {
 func isSym(ch byte) bool {
 	r := rune(ch)
 	return unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_'
+}
+
+func isNum(ch byte) bool {
+	return unicode.IsNumber(rune(ch)) 
 }
 
 
@@ -1204,17 +986,359 @@ func qlUpdate(req *QLUpdate) string {
 		return output
 }
 
+func qlEval(ctx *QLEvalContex, node QLNode) {
+	if ctx.err != nil {
+		return
+	}
+	switch node.Type {
+	// refer to a column
+	case QL_SYM:
+		/*if v := ctx.env.Get(string(node.Str)); v != nil {
+			ctx.out = *v
+		} else {
+			qlErr(ctx, "unknown column: %s", node.Str)
+		}*/
+		
+		//-------QL_STR = TYPE_BYTES
+		//-------QL_I64 = TYPE_INT64
+		ctx.out.Type = QL_STR 
+		ctx.out.Str = node.Str
+		// a literal value
+	case QL_I64, QL_STR:
+		ctx.out.Type = QL_I64
+		ctx.out = node.Value
+	// unary ops
+	case QL_NEG:
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			ctx.out.I64 = -ctx.out.I64
+		} else {
+			qlErr(ctx, "QL_NEG type error")
+		}
+	
+
+	// binary ops
+	case QL_CMP_GE: // >=
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_OR type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_OR type error")
+		}
+		ctx.out.I64 = Btoi(add1 >= add2)
+	case QL_CMP_GT:// >
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_OR type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_OR type error")
+		}
+		ctx.out.I64 = Btoi(add1 > add2)
+	case QL_CMP_LT:// < 
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_OR type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_OR type error")
+		}
+		ctx.out.I64 = Btoi(add1 < add2)
+	case QL_CMP_EQ: // = 
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_OR type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_OR type error")
+		}
+		ctx.out.I64 = Btoi(add1 == add2)
+	case QL_CMP_LE:// <= 
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_OR type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_OR type error")
+		}
+		ctx.out.I64 = Btoi(add1 <= add2)
+
+	// unary ops
+	case QL_NOT:
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			if ctx.out.I64 == 0 {
+    				ctx.out.I64 = 1
+			} else {
+    				ctx.out.I64 = 0
+			}
+		} else {
+			qlErr(ctx, "QL_NEG type error")
+		}
+	// others
+	case QL_TUP: // tuple
+	case QL_ERR: // error; from parsing or evaluation
+	
+	case QL_OR:
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_OR type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_OR type error")
+		}
+		ctx.out.I64 = Btoi(Itob(add1) || Itob(add2))
+	case QL_AND:
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_AND type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_AND type error")
+		}
+		ctx.out.I64 = Btoi(Itob(add1) && Itob(add2))
+	case QL_MUL:
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_MUL type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_MUL type error")
+		}
+		ctx.out.I64 = add1 * add2
+	case QL_DIV:
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_DIV type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_DIV type error")
+		}
+		ctx.out.I64 = add1 / add2
+	case QL_MOD:
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_MOD type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_MOD type error")
+		}
+		ctx.out.I64 = add1 % add2
+	
+	case QL_ADD:
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_ADD type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_ADD type error")
+		}
+		ctx.out.I64 = add1 + add2
+	case QL_SUB:
+		var add1 int
+		var add2 int
+		qlEval(ctx, node.Kids[0])
+		if ctx.out.Type == TYPE_INT64 {
+			add1 = ctx.out.I64
+		} else {
+			qlErr(ctx, " left QL_SUB type error")
+		}
+		qlEval(ctx, node.Kids[1])
+		if ctx.out.Type == TYPE_INT64 {
+			add2 = ctx.out.I64
+		} else {
+			qlErr(ctx, "right QL_SUB type error")
+		}
+		ctx.out.I64 = add1 - add2
+	default:
+		panic("not implemented")
+	}
+}
+
+func qlErr(ctx *QLEvalContex, err string){
+	ctx.err = errors.New(err)
+}
+
+func Btoi(b bool) int {
+    if b {
+        return 1
+    }
+    return 0
+ }
+ 
+ func Itob(b int) bool {
+    if b != 0 {
+        return true
+    }
+    return false
+ }
+ 
+func clear(ctx *QLEvalContex) {
+    ctx.out.Type = 0
+    ctx.out.I64 = 0
+    ctx.out.Str = []byte("")
+    ctx.err = nil
+}
+
+
 func qlInsert(req *QLInsert) string {
 	var output string
 	
 	users_table = append(users_table, UserFromDB{Id: 0, UserName: "", Login: "", Pswd: "", UserRole: 0})
-	users_table[len(users_table)-1].Id, _ = strconv.Atoi(string(req.Values[0].Str))
-    	users_table[len(users_table)-1].UserName = string(req.Values[1].Str)
-    	users_table[len(users_table)-1].Login = string(req.Values[2].Str)
-    	users_table[len(users_table)-1].Pswd = string(req.Values[3].Str)
-    	users_table[len(users_table)-1].UserRole, _ = strconv.Atoi(string(req.Values[4].Str))
+	
+	/*for i, node := range req.Values {
+    		var ctx QLEvalContex
+    		qlEval(&ctx, node)
+    		if ctx.err != nil {
+    			fmt.Println(ctx.err)
+    		} else {
+    			fmt.Println(ctx.out)
+    			users_table[len(users_table)-1].Id, _ = strconv.Atoi(string(req.Values[0].Str))
+    		}
+    	}*/
+    	var ctx QLEvalContex
+    	qlEval(&ctx, req.Values[0])
+    	if ctx.err != nil {
+    		fmt.Println(ctx.err)
+    	} else {
+    		users_table[len(users_table)-1].Id = ctx.out.I64
+    	}
+    	clear(&ctx)
+	//users_table[len(users_table)-1].Id, _ = strconv.Atoi(string(req.Values[0].Str))
+	qlEval(&ctx, req.Values[1])
+    	if ctx.err != nil {
+    		fmt.Println(ctx.err)
+    	} else {
+    		users_table[len(users_table)-1].UserName = string(ctx.out.Str)
+    	}
+    	clear(&ctx)
+    	//users_table[len(users_table)-1].UserName = string(req.Values[1].Str)
+    	qlEval(&ctx, req.Values[2])
+    	if ctx.err != nil {
+    		fmt.Println(ctx.err)
+    	} else {
+    		users_table[len(users_table)-1].Login = string(ctx.out.Str)
+    	}
+    	clear(&ctx)
+    	//users_table[len(users_table)-1].Login = string(req.Values[2].Str)
+    	qlEval(&ctx, req.Values[3])
+    	if ctx.err != nil {
+    		fmt.Println(ctx.err)
+    	} else {
+    		users_table[len(users_table)-1].Pswd = string(ctx.out.Str)
+    	}
+    	clear(&ctx)
+    	//users_table[len(users_table)-1].Pswd = string(req.Values[3].Str)
+    	qlEval(&ctx, req.Values[4])
+    	if ctx.err != nil {
+    		fmt.Println(ctx.err)
+    	} else {
+    		users_table[len(users_table)-1].UserRole = ctx.out.I64
+    	}
+    	clear(&ctx)
+    	//users_table[len(users_table)-1].UserRole, _ = strconv.Atoi(string(req.Values[4].Str))
     	output = "Inserted: OK" + "\n"
+    	
+    	//fmt.Println(req)
 
+    	
+    	
+    	
+ /*   	
+    type QLInsert
+	//Table string
+	//Mode int
+	//Names []string
+	Values []QLNode
+	
+    type QLNode
+	Value // Type, I64, Str
+	Kids []QLNode
+	
+    type Value
+	Type uint32
+	I64 int
+	//Str []byte
+
+*/
 	return output
 }
 
@@ -1358,5 +1482,7 @@ func cmd_delete(words []string) string {
 	
 	return output
 }
+
+
 
 
