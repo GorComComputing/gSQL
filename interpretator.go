@@ -6,44 +6,54 @@ import (
 )
 
 
+type Cmd struct {
+	addr 	func([]string) string
+	descr string     
+}
+
+
 // Command list for interpretator
-var cmd = map[string]func([]string)string{
-	"select": cmd_select,
-	"update": cmd_update,
-	"create": create_table,
-	"insert": cmd_insert,
-	"delete": cmd_delete,
+var cmd = map[string]Cmd{
+	"select": Cmd{addr: cmd_select, descr: "SQL request: select * from table;"},
+	"update": Cmd{addr: cmd_update, descr: "SQL request: update table set col1=val1, col2=val2;"},
+	"create": Cmd{addr: create_table, descr: "SQL request: create table;"},
+	"insert": Cmd{addr: cmd_insert, descr: "SQL request: insert into table values val1, val2;"},
+	"delete": Cmd{addr: cmd_delete, descr: "SQL request: delete from table;"},
 	
-	".save": cmd_save,
-	".load": cmd_load,
-	".quit": cmd_quit,
-	".help": cmd_help,
+	".save": Cmd{addr: cmd_save, descr: "Save table into file"},
+	".load": Cmd{addr: cmd_load, descr: "Load table from file"},
+	".quit": Cmd{addr: cmd_quit, descr: "Exit from this program"},
+	".help": Cmd{addr: cmd_help, descr: "Print this Help"},
 }
 
 
 // Interpretator 
 func interpretator(words []string) string {
 	if _, ok := cmd[words[0]]; ok {
-		return cmd[words[0]](words)
+		return cmd[words[0]].addr(words)
 	} else{
 		return "Unknown command: " + words[0] + "\n"
 	}
 }
 
-// Print command list
-var cmd_print = make(map[string]func([]string)string)
+// HELP - Print command list
+var cmd_print = make(map[string]Cmd)
 func cmd_help(words []string) string {
 	var output string
-	for key, _ := range cmd_print {
-		output += key + "\n"
+	for key, val := range cmd_print {
+		output += key 
+		for i := len(key); i < 10; i++ {
+			output += " "
+		} 
+		output += " - " + val.descr + "\n"
 	}
 	return output
 }
 
+
 // Exit from this program
 func cmd_quit(words []string) string {
 	os.Exit(0)
-	//exit_status = false
 	return ""
 }
 

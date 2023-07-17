@@ -5,12 +5,14 @@ import (
     "strings"
     "strconv"
     "os"
-    "bufio"
+    //"bufio"
     "encoding/binary"
     
     "unicode"
     "errors"
     
+    "encoding/gob"
+    "bytes"
     //"reflect"
 )
 
@@ -133,25 +135,38 @@ func (node BNode) nbytes() uint16 {
 /////////////////////////////////////////////////////////////////////////////
 
 type UserFromDB struct {
-    Id int
-    UserName string
-    Login string
-    Pswd string
-    UserRole int
+	Id	 int
+    	UserName string
+    	Login 	 string
+    	Pswd 	 string
+    	UserRole int
 }
 
+type DB struct {
+	Name 	string
+	File 	string
+	Tables 	[]Table
+}
+
+type Table struct {
+	Name string
+	Head []string
+    	Rows []UserFromDB
+}
+
+//var table = []Table{Head: {"Id", "User Name", "Login", "Password", "User Role"}}
 var users_table []UserFromDB
 
 
 
 
 type Query struct {
-	Type string
-	TableName string
-	Fields []string
-	Values []string
-	Set_Fields []string
-	Set_Values []string
+	Type 		string
+	TableName 	string
+	Fields 		[]string
+	Values 		[]string
+	Set_Fields 	[]string
+	Set_Values 	[]string
 }
 
 
@@ -176,11 +191,6 @@ func init_db() {
 	//users_table = append(users_table, UserFromDB{Id: 0, UserName: "admin", Login: "admin", Pswd: "pass", UserRole: 1})
 	//fmt.Println(users_table)
 	cmd_load(words)
-	
-	// Copy from the original map to the target map
-	for key, value := range cmd {
-  		cmd_print[key] = value
-	}
 }
 
 
@@ -211,7 +221,7 @@ func create_table(words []string) string {
 
 func cmd_save(words []string) string {
 	var output string
-	
+		
 	err := buildData("files/base.db", users_table)
 	if err == nil {
                 output = "Saved OK\n"
@@ -226,40 +236,27 @@ func cmd_save(words []string) string {
 
 func cmd_load(words []string) string {
 	var output string
-	var line string
-	var values = make([]string, 0)
+    	var buff bytes.Buffer
 	
 	file, err := os.Open("files/base.db")
     	if err != nil {
-        	output = "Saved FAIL\n"
+        	output = "Load FAIL\n"
         	return output
     	}
     	defer file.Close()
     	
-    	scanner := bufio.NewScanner(file)
-    	users_table = nil
-    	for scanner.Scan() {
-    		line = scanner.Text()
-    		values = strings.Fields(line)
-    		
-    		for i, _ := range values {
-       			values[i] = strings.ReplaceAll(values[i], "{", "")
-    			values[i] = strings.ReplaceAll(values[i], "}", "")
-    		}
-    		
-    		//values[0] = strings.ReplaceAll(values[0], "{", "")
-    		//values[4] = strings.ReplaceAll(values[4], "}", "")
-    		
-		Id, _ := strconv.Atoi(values[0])
-		UserRole, _ := strconv.Atoi(values[4])
-				
-		bk := UserFromDB{Id: Id, UserName: values[1], Login: values[2], Pswd: values[3], UserRole: UserRole}
-
-        	users_table = append(users_table, bk)
+	buff.ReadFrom(file)
+    	if err != nil {
+        	output = "Load FAIL\n"
+        	return output
     	}
-    	
- 
 
+	dec := gob.NewDecoder(&buff)
+	dec.Decode(&users_table)
+	
+	//fmt.Printf("%X\n", buff.Bytes())
+    	//fmt.Println(users_table)
+ 
 	return output
 }
 
@@ -271,18 +268,16 @@ func buildData(filename string, data []UserFromDB) error {
                 return err
         }
         defer f.Close()
-        
-        
-        for _, value := range data {
-       		fmt.Fprintln(f, value)  // print values to f, one per line
+       		
+       	var buff bytes.Buffer
+       	enc := gob.NewEncoder(&buff)
+       	enc.Encode(data)
+	//fmt.Printf("%X\n", buff.Bytes())
+
+       	err = binary.Write(f, binary.BigEndian, buff.Bytes())
+    	if err != nil {
+        	return errors.New("Save FAIL")
     	}
-        
-        
-        /*for _, v := range data {
-                if _, err := f.WriteString(string(v)); err != nil {
-                        return err
-                }
-        }*/
         return nil
 }
 
@@ -567,7 +562,7 @@ func pExprAtom(p *Parser, node *QLNode) {
 		}*/
 	case pSym(p, node):
 	case pNum(p, node):
-	//case pStr(p, node):
+	case pStr(p, node):
 	default:
 		pErr(p, node, "expect symbol, number or string")
 	}
@@ -619,9 +614,9 @@ func pNum(p *Parser, node *QLNode) bool {
 	for end < len(p.input) && isNum(p.input[end]) {
 		end++
 	}
-	/*if pKeywordSet[strings.ToLower(string(p.input[p.idx:end]))] {
+	if pKeywordSet[strings.ToLower(string(p.input[p.idx:end]))] {
 		return false // not allowed
-	}*/
+	}
 	node.Type = QL_I64
 	node.I64, _ = strconv.Atoi(string(p.input[p.idx:end]))
 	p.idx = end
@@ -629,6 +624,21 @@ func pNum(p *Parser, node *QLNode) bool {
 }
 
 func pStr(p *Parser, node *QLNode) bool {
+	skipSpace(p)
+	
+	end := p.idx
+	if !(end < len(p.input) && p.input[p.idx] == 39) {
+		return false
+	}
+	end++
+	p.idx++
+	for end < len(p.input) && p.input[end] != 39 {
+		end++
+	}
+	
+	node.Type = QL_STR
+	node.Str = p.input[p.idx:end]
+	p.idx = end+1	
 	return true
 }
 
@@ -1003,8 +1013,10 @@ func qlEval(ctx *QLEvalContex, node QLNode) {
 		//-------QL_I64 = TYPE_INT64
 		ctx.out.Type = QL_STR 
 		ctx.out.Str = node.Str
-		// a literal value
-	case QL_I64, QL_STR:
+	case QL_STR:
+		ctx.out.Type = QL_STR 
+		ctx.out.Str = node.Str
+	case QL_I64:
 		ctx.out.Type = QL_I64
 		ctx.out = node.Value
 	// unary ops
@@ -1276,6 +1288,7 @@ func qlInsert(req *QLInsert) string {
     	}*/
     	var ctx QLEvalContex
     	qlEval(&ctx, req.Values[0])
+   	
     	if ctx.err != nil {
     		fmt.Println(ctx.err)
     	} else {
@@ -1290,6 +1303,7 @@ func qlInsert(req *QLInsert) string {
     		users_table[len(users_table)-1].UserName = string(ctx.out.Str)
     	}
     	clear(&ctx)
+   	
     	//users_table[len(users_table)-1].UserName = string(req.Values[1].Str)
     	qlEval(&ctx, req.Values[2])
     	if ctx.err != nil {
@@ -1298,6 +1312,7 @@ func qlInsert(req *QLInsert) string {
     		users_table[len(users_table)-1].Login = string(ctx.out.Str)
     	}
     	clear(&ctx)
+
     	//users_table[len(users_table)-1].Login = string(req.Values[2].Str)
     	qlEval(&ctx, req.Values[3])
     	if ctx.err != nil {

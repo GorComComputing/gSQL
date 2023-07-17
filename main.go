@@ -9,13 +9,16 @@ import (
 )
 
 
-//var exit_status bool = true	// false = exit
-
-
 func main() {
 	var cmd_line string
 	var words = make([]string, len(os.Args)-1)
 	
+	// Copy from the original map of command to the ptint map of command
+	for key, value := range cmd {
+  		cmd_print[key] = value
+	}
+	
+	// Load DB from file
 	init_db()
 
 	// pars command line args
