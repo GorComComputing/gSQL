@@ -2,7 +2,7 @@ package main
 
 import (
     "fmt"
-    //"strings"
+    "strings"
     "strconv"
     "os"
     //"bufio"
@@ -14,7 +14,43 @@ import (
     "encoding/gob"
     "bytes"
     //"reflect"
+    
+    "math/rand"
 )
+
+
+func cmd_test(words []string) string {
+	var output string
+	
+	var words2 = make([]string, 0)
+	
+	words2 = strings.Fields("create table users (id integer, num integer, name varchar);")
+	out := interpretator(words2)
+	//fmt.Println("test 1")
+	if len(out) > 0 {
+		output += out
+	}
+
+	
+	//output += cmd_create([]string{"create", "table", "users", "(Id", "integer,", "name", "varchar);"})
+	
+	for i := 0; i < 100; i++ {
+		//fmt.Println("test 2")
+		//output += cmd_insert([]string{"insert", "into", "users", "values", string(i) + ",", "Name" +  string(i) + ";"})
+		words3 := strings.Fields("insert into users values " + strconv.Itoa(i) + ", " + strconv.Itoa(rand.Intn(100)) + ", Name1;")
+		out := interpretator(words3)
+		if len(out) > 0 {
+			output += out
+		}	
+	}
+	output += "DONE\n"
+	
+	if len(output) > 0 {
+		fmt.Println(output)
+	}
+	
+	return output 
+}
 
 
 func cmd_lstbl(words []string) string {

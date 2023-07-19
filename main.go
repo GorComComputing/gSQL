@@ -20,6 +20,8 @@ func main() {
 	
 	// Load DB from file
 	init_db()
+	
+	//cmd_test(words)
 
 	// pars command line args
 	if len(os.Args) > 1 {

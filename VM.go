@@ -3,7 +3,7 @@ package main
 import (
     "fmt"
     //"strings"
-    //"strconv"
+    "strconv"
     //"os"
     //"bufio"
     //"encoding/binary"
@@ -64,9 +64,16 @@ func qlSelect(req *QLSelect) string {
 	
 	
 		var num int
-		for i := 0; i < len(tst_db.Tables[0].Rows); i++{
-		for _, val := range query.Fields{
-			switch val {
+		for i := 0; i < len(tst_db.Tables[TableNum].Rows); i++{
+		for _, val := range req.Output{
+			num = findIndex(tst_db.Tables[TableNum].Cols, string(val.Str))
+			if num < 0 {
+				output = "Don't find column " + string(val.Str) + "\n"
+				return output
+			}
+			output += tst_db.Tables[TableNum].Rows[i][num] + " "
+			
+			/*switch val {
 			case "Id":
 				num = findIndex(tst_db.Tables[TableNum].Cols, "Id")
 				output += string(tst_db.Tables[TableNum].Rows[i][num]) + " "
@@ -88,7 +95,7 @@ func qlSelect(req *QLSelect) string {
     			//output += strconv.Itoa(tst_db.Tables[TableNum].Rows[i].UserRole) + " " 
     			default:
 			fmt.Println("Don't find column ", val)
-			}
+			}*/
 		}
 		if len(output) > 0 {output += "\n"}
 		}
@@ -511,7 +518,7 @@ func qlInsert(req *QLInsert) string {
 	
 	
 	//tst_db.Tables[TableNum].Rows = append(tst_db.Tables[TableNum].Rows, Row{Id: 0, UserName: "", Login: "", Pswd: "", UserRole: 0})
-	
+	tst_db.Tables[TableNum].Rows = append(tst_db.Tables[TableNum].Rows, []string{""})
 	/*for i, node := range req.Values {
     		var ctx QLEvalContex
     		qlEval(&ctx, node)
@@ -523,7 +530,37 @@ func qlInsert(req *QLInsert) string {
     		}
     	}*/
     	var ctx QLEvalContex
-    	qlEval(&ctx, req.Values[0])
+    	
+    	for i, value := range req.Values {
+    		qlEval(&ctx, value)
+    		if ctx.err != nil {
+    			fmt.Println(ctx.err)
+    		} else {
+    			switch value.Type {
+    			case TYPE_INT64: 
+    				//fmt.Println("int64" + strconv.Itoa(ctx.out.I64))
+    				if i == 0 {
+    					tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1][0] = strconv.Itoa(ctx.out.I64)
+    				} else {
+    					tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1] = append(tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1], strconv.Itoa(ctx.out.I64))
+    				}
+    			case QL_SYM: 
+    				//fmt.Println("bytes" + string(ctx.out.Str))
+    				if i == 0 {
+    					tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1][0] = string(ctx.out.Str)
+    				} else {
+    					tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1] = append(tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1], string(ctx.out.Str))
+    				}
+    			}
+    		}
+    		clear(&ctx)
+    	}
+    	output = "Inserted: OK" + "\n"
+    	//fmt.Println(tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1])
+    	
+    	
+/*    	qlEval(&ctx, req.Values[0])
+    	fmt.Println("test 1")
    	
     	if ctx.err != nil {
     		fmt.Println(ctx.err)
@@ -534,6 +571,9 @@ func qlInsert(req *QLInsert) string {
     	clear(&ctx)
 	//tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1].Id, _ = strconv.Atoi(string(req.Values[0].Str))
 	qlEval(&ctx, req.Values[1])
+	
+	fmt.Println("test 2")
+	
     	if ctx.err != nil {
     		fmt.Println(ctx.err)
     	} else {
@@ -544,6 +584,9 @@ func qlInsert(req *QLInsert) string {
    	
     	//tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1].UserName = string(req.Values[1].Str)
     	qlEval(&ctx, req.Values[2])
+    	
+    	fmt.Println("test 3")
+    	
     	if ctx.err != nil {
     		fmt.Println(ctx.err)
     	} else {
@@ -554,6 +597,9 @@ func qlInsert(req *QLInsert) string {
 
     	//tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1].Login = string(req.Values[2].Str)
     	qlEval(&ctx, req.Values[3])
+    	
+    	fmt.Println("test 4")
+    	
     	if ctx.err != nil {
     		fmt.Println(ctx.err)
     	} else {
@@ -563,6 +609,9 @@ func qlInsert(req *QLInsert) string {
     	clear(&ctx)
     	//tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1].Pswd = string(req.Values[3].Str)
     	qlEval(&ctx, req.Values[4])
+    	
+    	fmt.Println("test 5")
+    	
     	if ctx.err != nil {
     		fmt.Println(ctx.err)
     	} else {
@@ -572,7 +621,7 @@ func qlInsert(req *QLInsert) string {
     	clear(&ctx)
     	//tst_db.Tables[TableNum].Rows[len(tst_db.Tables[TableNum].Rows)-1].UserRole, _ = strconv.Atoi(string(req.Values[4].Str))
     	output = "Inserted: OK" + "\n"
-    	
+*/    	
     	//fmt.Println(req)
 
     	

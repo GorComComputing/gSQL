@@ -25,8 +25,10 @@ var cmd = map[string]Cmd{
 	".quit": Cmd{addr: cmd_quit, descr: "Exit from this program"},
 	".help": Cmd{addr: cmd_help, descr: "Print this Help"},
 	
-	"lstbl": Cmd{addr: cmd_lstbl, descr: "List of tables"},
-	"vtbl": Cmd{addr: cmd_vtbl, descr: "View table"},
+	".lstbl": Cmd{addr: cmd_lstbl, descr: "List of tables"},
+	".vtbl": Cmd{addr: cmd_vtbl, descr: "View table"},
+	
+	//".tst": Cmd{addr: cmd_test, descr: "Test"},
 	
 	"drop": Cmd{addr: cmd_drop, descr: "SQL request: drop table name;"},
 	"alter": Cmd{addr: cmd_alter, descr: "SQL request: ALTER TABLE name DROP COLUMN col_name;"},
